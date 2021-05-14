@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1, user-scalable=no"
+    />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <script
+      src="https://cdn.socket.io/3.1.3/socket.io.min.js"
+      integrity="sha384-cPwlPLvBTa3sKAgddT6krw0cJat7egBga3DJepJyrLl4Q9/5WLra3rrnMcyTyOnh"
+      crossorigin="anonymous"
+    ></script>
+    <script src="https://unpkg.com/axios/dist/axios.min.js"></script>
+    <title>WebXR</title>
+  </head>
+
+  <body>
+    <div id="overlay" style="visibility: hidden">
+      <div class="info-area">
+        <div id="info"></div>
+        <button id="xr-button" disabled>XR not found</button>
+      </div>
+      <div
+        id="commandList"
+        style="
+          display: flex;
+          justify-content: space-between;
+          margin-left: 10em;
+          margin-right: 10em;
+        "
+      >
+        <div id="attack" style="border-style: double">공격</div>
+        <div id="defence" style="border-style: double">방어</div>
+      </div>
+    </div>
+    <div id="landing" style="text-align: center">
+      <h1>AR 멀티 게임</h1>
+      <div
+        style="
+          margin-top: 5em;
+          border-style: double;
+          margin-left: 5em;
+          margin-right: 5em;
+        "
+      >
+        <h2 id="makeRoom">방 만들기</h2>
+      </div>
+      <h3 id="GetCode" style="visibility: hidden;">초대코드</h2>
+      <div style="margin-top: 5em">
+        <h2>초대 코드 입력하기</h2>
+        <input type="text" id="inviteCode" />
+        <button>참여</button>
+      </div>
+    </div>
+    <script type="module" src="index.js"></script>
+  </body>
+</html>
