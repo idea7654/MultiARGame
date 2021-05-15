@@ -1,6 +1,9 @@
-import * as THREE from "https://unpkg.com/three/build/three.module.js";
-import { ColladaLoader } from "https://threejs.org/examples/jsm/loaders/ColladaLoader.js";
-import { GLTFLoader } from "https://threejs.org/examples/jsm/loaders/GLTFLoader.js";
+// import * as THREE from "https://unpkg.com/three/build/three.module.js";
+// import { ColladaLoader } from "https://threejs.org/examples/jsm/loaders/ColladaLoader.js";
+// import { GLTFLoader } from "https://threejs.org/examples/jsm/loaders/GLTFLoader.js";
+import * as THREE from "https://unpkg.com/three@0.126.1/build/three.module.js";
+import { GLTFLoader } from "https://unpkg.com/three@0.126.1/examples/jsm/loaders/GLTFLoader.js";
+import { SkeletonUtils } from "https://unpkg.com/three@0.126.1/examples/jsm/utils/SkeletonUtils.js";
 
 let renderer = null;
 let scene = null;
@@ -15,20 +18,36 @@ let otherPlayer = null;
 let playerVector = null;
 let otherObject = null;
 const info = document.getElementById("info");
-const socket = io.connect("http://localhost:3000");
+const socket = io.connect("https://ac344fe23f82.ngrok.io");
 let mixer = null;
 let clips = null;
 let myModelFlag = false;
+let roomID = null;
+let distance = null;
 
 document.getElementById("makeRoom").addEventListener("click", makeRoom);
-
+document.getElementById("enterRoom").addEventListener("click", enterRoom);
 function makeRoom() {
   socket.emit("CreateRoom");
 }
+function enterRoom() {
+  const inviteCode = document.getElementById("inviteCode").value;
+  socket.emit("enterRoom", inviteCode);
+}
 
 socket.on("CreateRoom", (data) => {
-  document.getElementById("GetCode").visibility = true;
+  document.getElementById("GetCode").style.visibility = "visible";
+  console.log(data);
   document.getElementById("GetCode").innerHTML = data;
+  roomID = data;
+});
+
+socket.on("joinError", () => {
+  alert("초대번호가 잘못되었습니다");
+});
+
+socket.on("showArButton", () => {
+  document.getElementById("overlay").style.visibility = "visible";
 });
 
 const initScene = (gl, session) => {
@@ -69,16 +88,18 @@ const initScene = (gl, session) => {
 
   const gltfLoader = new GLTFLoader();
   gltfLoader.load("knight.gltf", (gltf) => {
-    const box = new THREE.Box3().setFromObject(collada.scene);
+    const copy = SkeletonUtils.clone(gltf.scene);
+    const box = new THREE.Box3().setFromObject(gltf.scene);
     const c = box.getCenter(new THREE.Vector3());
     const size = box.getSize(new THREE.Vector3());
 
     gltf.scene.position.set(-c.x, size.y / 2 - c.y, -c.z);
     model = new THREE.Object3D();
+    gltf.scene.position.set(0, 0, 0.5);
+    gltf.scene.rotateY(Math.PI);
     model.add(gltf.scene);
-
-    myModel = new THREE.Object3D();
-    myModel.add(gltf.scene);
+    copy.position.set(0, 0, -0.5);
+    model.add(copy);
 
     mixer = new THREE.AnimationMixer(gltf);
     clips = gltf.animations;
@@ -92,7 +113,7 @@ const initScene = (gl, session) => {
   renderer.xr.setSession(session);
   document.body.appendChild(renderer.domElement);
 
-  //getGPS();
+  getGPS();
   //---
 };
 
@@ -212,10 +233,11 @@ function getGPS() {
     };
 
     socket.emit("sendPlayerInfo", {
+      roomID: roomID,
       id: socket.id,
-      gps: gps,
-      // gps: fakeGps,
-      degree: compassDegree,
+      // gps: gps,
+      gps: fakeGps,
+      //degree: compassDegree,
     });
   }
 
@@ -238,12 +260,20 @@ function handleMotion(event) {
 
 function updateAnimation() {
   //threeJs의 오브젝트들의 애니메이션을 넣는 곳
-  if (myModel && controller) {
-    myModel.position.set(0, -1.5, 0.3).applyMatrix4(controller.matrixWorld);
-    myModel.position.setFromRotationMatrix(controller.matrixWorld);
-    if (!myModelFlag) {
-      scene.add(myModel);
-    }
+  // if (myModel && controller) {
+  //   myModel.position.set(0, -1.5, 0.3).applyMatrix4(controller.matrixWorld);
+  //   myModel.quaternion.setFromRotationMatrix(controller.matrixWorld);
+
+  //   if (!myModelFlag) {
+  //     scene.add(myModel);
+  //   }
+  // }
+  if (distance && model) {
+    //myModel.children[0].scale.set(distance, distance, distance);
+    //model.children[0].scale.set(distance, distance, distance);
+    //model.children[1].scale.set(distance, distance, distance);
+    //model.scale.set(distance, distance, distance);
+    //console.log(distance);
   }
 }
 
@@ -264,64 +294,78 @@ function onXRFrame(t, frame) {
 }
 
 checkXR(); //브라우저가 로딩되면 checkXR을 실행
-getGPS();
+// getGPS();
 
 //socket
 
 socket.on("sendPlayerInfo", async (data) => {
   //players
-  const index = await data.findIndex((i) => i.id == socket.id);
-  await data.splice(index, 1);
-  otherPlayer = await data[0];
-  if (otherPlayer && !otherObject) {
-    const dlat = -(otherPlayer.gps.lat - gps.lat);
-    const dlon = -(otherPlayer.gps.lon - gps.lon);
-    // const dlat = -(otherPlayer.gps.lon - fakeGps.lat);
-    // const dlon = -(otherPlayer.gps.lon - fakeGps.lon);
+  //const index = await data.findIndex((i) => i.id == socket.id);
+  //await data.splice(index, 1);
+  //otherPlayer = await data[0];
+  if (data.player1.id == socket.id) {
+    otherPlayer = await data.player2;
+  } else {
+    otherPlayer = await data.player1;
+  }
+  if (otherPlayer && !otherObject && model) {
+    // const dlat = -(otherPlayer.gps.lat - gps.lat);
+    // const dlon = -(otherPlayer.gps.lon - gps.lon);
+    const dlat = -(otherPlayer.gps.lat - fakeGps.lat);
+    const dlon = -(otherPlayer.gps.lon - fakeGps.lon);
     const x = dlat * 11100;
     const z = dlon * 11100;
-    model.position.set(0, -1.5, z).applyMatrix4(controller.matrixWorld);
+    distance = Math.sqrt(x * x + z * z);
+    model.position.set(0, -1, z / 2).applyMatrix4(controller.matrixWorld);
     model.quaternion.setFromRotationMatrix(controller.matrixWorld);
+    model.rotateY((-45 * Math.PI) / 180);
+    // myModel.position
+    //   .set(0, -1.5, z / 2 - 0.5)
+    //   .applyMatrix4(controller.matrixWorld);
+    // myModel.quaternion.setFromRotationMatrix(controller.matrixWorld);
 
     otherObject = new THREE.Object3D();
     otherObject.add(model);
-    const angle = (Math.atan2(z, x) * 180) / Math.PI - compassDegree;
+    //otherObject.add(myModel);
+    const angle = -((Math.atan2(z, x) * 180) / Math.PI - compassDegree);
     let realAngle = 0;
     if (angle < 0) {
-      realAngle = angle + 360;
+      realAngle = -angle;
+    } else {
+      realAngle = angle + 180;
     }
-    if (angle > 360) {
-      realAngle = angle - 360;
-    }
+    // if (angle > 360) {
+    //   realAngle = angle - 360;
+    // }
     otherObject.rotateY((-realAngle / 180) * Math.PI);
     otherObject.name = otherPlayer.id;
     scene.add(otherObject);
     info.innerHTML = `확인해보세요! 당신의 compass값은${compassDegree}`;
   }
-  if (otherPlayer && otherObject) {
-    const dlat = -(otherPlayer.gps.lat - gps.lat);
-    const dlon = -(otherPlayer.gps.lon - gps.lon);
-    // const dlat = -(otherPlayer.gps.lat - fakeGps.lat);
-    // const dlon = -(otherPlayer.gps.lon - fakeGps.lon);
-    const x = dlat * 11100;
-    const z = dlon * 11100;
-    model.position.set(0, 0, 0);
-    model.rotation.set(0, 0, 0);
-    model.position.set(0, -1.5, z).applyMatrix4(controller.matrixWorld);
-    model.quaternion.setFromRotationMatrix(controller.matrixWorld);
+  // if (otherPlayer && otherObject && model) {
+  //   // const dlat = -(otherPlayer.gps.lat - gps.lat);
+  //   // const dlon = -(otherPlayer.gps.lon - gps.lon);
+  //   const dlat = -(otherPlayer.gps.lat - fakeGps.lat);
+  //   const dlon = -(otherPlayer.gps.lon - fakeGps.lon);
+  //   const x = dlat * 11100;
+  //   const z = dlon * 11100;
+  //   model.position.set(0, 0, 0);
+  //   model.rotation.set(0, 0, 0);
+  //   model.position.set(0, -1.5, z).applyMatrix4(controller.matrixWorld);
+  //   model.quaternion.setFromRotationMatrix(controller.matrixWorld);
 
-    const angle = (Math.atan2(z, x) * 180) / Math.PI - compassDegree;
-    info.innerHTML = `확인해보세요! 당신의 compass값은${compassDegree}`;
-    let realAngle = 0;
-    if (angle < 0) {
-      realAngle = angle + 360;
-    }
-    if (angle > 360) {
-      realAngle = angle - 360;
-    }
+  //   const angle = (Math.atan2(z, x) * 180) / Math.PI - compassDegree;
+  //   info.innerHTML = `확인해보세요! 당신의 compass값은${compassDegree}`;
+  //   let realAngle = 0;
+  //   if (angle < 0) {
+  //     realAngle = angle + 360;
+  //   }
+  //   if (angle > 360) {
+  //     realAngle = angle - 360;
+  //   }
 
-    const targetObj = scene.getObjectByName(otherPlayer.id, true);
-    targetObj.rotation.set(0, 0, 0);
-    targetObj.rotateY((-realAngle / 180) * Math.PI);
-  }
+  //   const targetObj = scene.getObjectByName(otherPlayer.id, true);
+  //   targetObj.rotation.set(0, 0, 0);
+  //   targetObj.rotateY((-realAngle / 180) * Math.PI);
+  // }
 });

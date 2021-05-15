@@ -21,7 +21,9 @@
     <div id="overlay" style="visibility: hidden">
       <div class="info-area">
         <div id="info"></div>
-        <button id="xr-button" disabled>XR not found</button>
+        <div style="position: fixed; bottom: 5em; left: 50%; transform: translateX(-50%);">
+          <button id="xr-button" disabled>XR not found</button>
+        </div>
       </div>
       <div
         id="commandList"
@@ -30,6 +32,7 @@
           justify-content: space-between;
           margin-left: 10em;
           margin-right: 10em;
+          visibility: hidden;
         "
       >
         <div id="attack" style="border-style: double">공격</div>
@@ -52,7 +55,7 @@
       <div style="margin-top: 5em">
         <h2>초대 코드 입력하기</h2>
         <input type="text" id="inviteCode" />
-        <button>참여</button>
+        <button id="enterRoom">참여</button>
       </div>
     </div>
     <script type="module" src="index.js"></script>
