@@ -35,6 +35,21 @@ io.on("connection", (socket) => {
     // });
   });
 
+  socket.on("command", (data) => {
+    const room = rooms.find((i) => i.roomId == data.roomID);
+    if (room.player1.id == socket.id) {
+      room.player1.command = data.message;
+    } else {
+      room.player2.command = data.message;
+    }
+
+    if (room.player1.command && room.player2.command) {
+      io.to(data.roomID).emit("excuteTurn", room);
+    }
+    room.player1.command = null;
+    room.player2.command = null;
+  });
+
   socket.on("CreateRoom", () => {
     const roomId = Math.random().toString(36).substr(2, 11);
     rooms.push({
@@ -42,10 +57,12 @@ io.on("connection", (socket) => {
       player1: {
         id: socket.id,
         gps: null,
+        command: null,
       },
       player2: {
         id: null,
         gps: null,
+        command: null,
       },
     });
     socket.join(roomId);

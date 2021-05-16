@@ -13,17 +13,20 @@ let compassDegree = null;
 let watch = null;
 let controller = null;
 let model = null;
-let myModel = null;
 let otherPlayer = null;
 let playerVector = null;
 let otherObject = null;
 const info = document.getElementById("info");
-const socket = io.connect("https://ac344fe23f82.ngrok.io");
-let mixer = null;
+const socket = io.connect("https://d91e9d1b4a99.ngrok.io");
+//--- Animation ---
 let clips = null;
-let myModelFlag = false;
+let mixer = null;
+let EnemyMixer = null;
+let then = 0;
+//-----------------
 let roomID = null;
 let distance = null;
+let commandFlag = false;
 
 document.getElementById("makeRoom").addEventListener("click", makeRoom);
 document.getElementById("enterRoom").addEventListener("click", enterRoom);
@@ -49,6 +52,129 @@ socket.on("joinError", () => {
 socket.on("showArButton", () => {
   document.getElementById("overlay").style.visibility = "visible";
 });
+
+socket.on('executeTurn', (data) => {
+  if(data.player1.id == socket.id){
+    //player1이 나일때
+    if(data.player1.command == 'attack'){
+      myAttack();
+    }else{
+      myDefense();
+    }
+    setTimeout(() => {
+      if(data.player2.command == 'attack'){
+        enemyAttack();
+      }
+      if(data.player2.command == 'defense'){
+        enemyDefense();
+      }
+    }, 3000);
+  }else{
+    //player2가 나일때
+    if(data.player1.command == 'attack'){
+      enemyAttack();
+    }else{
+      enemyDefense();
+    }
+    setTimeout(() => {
+      if(data.player2.command == 'attack'){
+        myAttack();
+      }
+      if(data.player2.command == 'defense'){
+        myDefense();
+      }
+    }, 3000);
+  }
+
+  setTimeout(() => {
+    commandFlag = false;
+  }, 6000);
+  //commandFlag = false;
+})
+
+function myAttack(){
+  const playerModel = await model.children[0];
+  const interval = await setInterval(() => {
+  if (playerModel.position.z < 0.4) {
+    playerModel.position.z += 0.05;
+  } else {
+    const clip = THREE.AnimationClip.findByName(
+      clips,
+        "knight_attack_2_heavy_weapon"
+      );
+      const action = mixer.clipAction(clip);
+      action.play();
+    }
+  }, 10);
+
+  await setTimeout(() => {
+    clearInterval(interval);
+
+    const newInterval = setInterval(() => {
+      if (playerModel.position.z >= -0.5) {
+        playerModel.position.z -= 0.05;
+        const clip = THREE.AnimationClip.findByName(clips, "knight_idle");
+        mixer.stopAllAction();
+        const action = mixer.clipAction(clip);
+        action.play();
+      } else {
+        clearInterval(newInterval);
+      }
+    }, 10);
+  }, 2000);
+}
+
+function myDefense(){
+  const clip = THREE.AnimationClip.findByName(
+    clips,
+      "knight_shield_block"
+    );
+  mixer.stopAllAction();
+  const action = mixer.clipAction(clip);
+  action.play();
+}
+
+function enemyAttack(){
+  const enemyModel = await model.children[1];
+  const interval = await setInterval(() => {
+  if (enemyModel.position.z > -0.4) {
+    enemyModel.position.z -= 0.05;
+  } else {
+    const clip = THREE.AnimationClip.findByName(
+      clips,
+        "knight_attack_2_heavy_weapon"
+      );
+      const action = EnemyMixer.clipAction(clip);
+      action.play();
+    }
+  }, 10);
+
+  await setTimeout(() => {
+    clearInterval(interval);
+
+    const newInterval = setInterval(() => {
+      if (enemyModel.position.z >= -0.5) {
+        enemyModel.position.z -= 0.05;
+        const clip = THREE.AnimationClip.findByName(clips, "knight_idle");
+        EnemyMixer.stopAllAction();
+        const action = EnemyMixer.clipAction(clip);
+        action.play();
+      } else {
+        clearInterval(newInterval);
+      }
+    }, 10);
+  }, 2000);
+}
+
+function enemyDefense(){
+  const clip = THREE.AnimationClip.findByName(
+    clips,
+      "knight_shield_block"
+    );
+  EnemyMixer.stopAllAction();
+  const action = EnemyMixer.clipAction(clip);
+  action.play();
+}
 
 const initScene = (gl, session) => {
   //-- scene, camera(threeJs의 카메라, 씬 설정)
@@ -94,15 +220,36 @@ const initScene = (gl, session) => {
     const size = box.getSize(new THREE.Vector3());
 
     gltf.scene.position.set(-c.x, size.y / 2 - c.y, -c.z);
+    gltf.scene.scale.set(0.1, 0.1, 0.1);
     model = new THREE.Object3D();
-    gltf.scene.position.set(0, 0, 0.5);
-    gltf.scene.rotateY(Math.PI);
+    gltf.scene.position.set(0, 0, -0.5);
+    //gltf.scene.rotateY(Math.PI);
     model.add(gltf.scene);
-    copy.position.set(0, 0, -0.5);
+    copy.scale.set(0.1, 0.1, 0.1);
+    copy.position.set(0, 0, 0.5);
+    copy.rotateY(Math.PI);
     model.add(copy);
 
-    mixer = new THREE.AnimationMixer(gltf);
+    mixer = new THREE.AnimationMixer(gltf.scene);
     clips = gltf.animations;
+
+    EnemyMixer = new THREE.AnimationMixer(copy);
+
+    const clip = THREE.AnimationClip.findByName(clips, "knight_idle");
+    const action = mixer.clipAction(clip);
+    action.play();
+
+    const EnemyClip = THREE.AnimationClip.findByName(
+      clips,
+      "knight_walk_in_place"
+    );
+    const EnemyAction = EnemyMixer.clipAction(EnemyClip);
+    EnemyAction.play();
+
+    document.getElementById("commandList").style.visibility = "visible";
+    xrButton.style.visibility = "hidden";
+
+    document.getElementById("attack").addEventListener("click", attack);
   });
 
   controller = renderer.xr.getController(0);
@@ -116,6 +263,16 @@ const initScene = (gl, session) => {
   getGPS();
   //---
 };
+
+async function attack() {
+  if (!commandFlag) {
+    socket.emit("command", {
+      message: "command",
+      roomID: roomID,
+    });
+    commandFlag = true;
+  }
+}
 
 // AR세션을 시작하는 버튼
 const xrButton = document.getElementById("xr-button");
@@ -258,22 +415,18 @@ function handleMotion(event) {
   compassDegree = Math.ceil(compass);
 }
 
-function updateAnimation() {
+function updateAnimation(time) {
   //threeJs의 오브젝트들의 애니메이션을 넣는 곳
-  // if (myModel && controller) {
-  //   myModel.position.set(0, -1.5, 0.3).applyMatrix4(controller.matrixWorld);
-  //   myModel.quaternion.setFromRotationMatrix(controller.matrixWorld);
+  time *= 0.001;
+  const deltaTime = time - then;
+  then = time;
+  if (mixer && EnemyMixer) {
+    mixer.update(deltaTime);
+    EnemyMixer.update(deltaTime);
+  }
 
-  //   if (!myModelFlag) {
-  //     scene.add(myModel);
-  //   }
-  // }
   if (distance && model) {
-    //myModel.children[0].scale.set(distance, distance, distance);
-    //model.children[0].scale.set(distance, distance, distance);
-    //model.children[1].scale.set(distance, distance, distance);
-    //model.scale.set(distance, distance, distance);
-    //console.log(distance);
+    model.scale.set(distance / 10, distance / 10, distance / 10);
   }
 }
 
@@ -286,7 +439,7 @@ function onXRFrame(t, frame) {
   }
   session.requestAnimationFrame(onXRFrame); //onXRFrame을 반복 호출
 
-  updateAnimation();
+  updateAnimation(t);
   //WebXr로 생성된 gl 컨텍스트를 threeJs 렌더러에 바인딩
   gl.bindFramebuffer(gl.FRAMEBUFFER, session.renderState.baseLayer.framebuffer);
   //threeJs의 씬을 렌더링
@@ -294,15 +447,11 @@ function onXRFrame(t, frame) {
 }
 
 checkXR(); //브라우저가 로딩되면 checkXR을 실행
-// getGPS();
 
 //socket
 
 socket.on("sendPlayerInfo", async (data) => {
   //players
-  //const index = await data.findIndex((i) => i.id == socket.id);
-  //await data.splice(index, 1);
-  //otherPlayer = await data[0];
   if (data.player1.id == socket.id) {
     otherPlayer = await data.player2;
   } else {
@@ -319,24 +468,16 @@ socket.on("sendPlayerInfo", async (data) => {
     model.position.set(0, -1, z / 2).applyMatrix4(controller.matrixWorld);
     model.quaternion.setFromRotationMatrix(controller.matrixWorld);
     model.rotateY((-45 * Math.PI) / 180);
-    // myModel.position
-    //   .set(0, -1.5, z / 2 - 0.5)
-    //   .applyMatrix4(controller.matrixWorld);
-    // myModel.quaternion.setFromRotationMatrix(controller.matrixWorld);
 
     otherObject = new THREE.Object3D();
     otherObject.add(model);
-    //otherObject.add(myModel);
-    const angle = -((Math.atan2(z, x) * 180) / Math.PI - compassDegree);
+    const angle = -((Math.atan2(z, x) * 180) / Math.PI);
     let realAngle = 0;
     if (angle < 0) {
-      realAngle = -angle;
+      realAngle = -angle - compassDegree;
     } else {
-      realAngle = angle + 180;
+      realAngle = angle + 180 - compassDegree;
     }
-    // if (angle > 360) {
-    //   realAngle = angle - 360;
-    // }
     otherObject.rotateY((-realAngle / 180) * Math.PI);
     otherObject.name = otherPlayer.id;
     scene.add(otherObject);
