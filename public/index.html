@@ -25,20 +25,24 @@
           <button id="xr-button" disabled>XR not found</button>
         </div>
       </div>
+      <div id="hpBar" style="position: absolute; left: 50%; transform: translateX(-50%); visibility: hidden; bottom: 10em;">
+        HP - 100
+      </div>
       <div
         id="commandList"
         style="
           display: flex;
           justify-content: space-between;
           visibility: hidden;
-          position: fixed;
-          bottom: 10em;
+          position: absolute;
+          bottom: 5em;
           left: 50%;
           transform: translateX(-50%);
         "
       >
-        <div id="attack" style="border-style: double; width: 5em; text-align: center;">공격</div>
-        <div id="defence" style="border-style: double; width: 5em; text-align: center;">방어</div>
+        <div id="attack" style="border-style: double; width: 5em; text-align: center; background-color: white;">공격</div>
+        <div id="defence" style="border-style: double; width: 5em; text-align: center; background-color: white;">방어</div>
+        <div id="counter" style="border-style: double; width: 5em; text-align: center; background-color: white;">반격</div>
       </div>
     </div>
     <div id="landing" style="text-align: center">

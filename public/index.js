@@ -17,7 +17,7 @@ let otherPlayer = null;
 let playerVector = null;
 let otherObject = null;
 const info = document.getElementById("info");
-const socket = io.connect("https://d91e9d1b4a99.ngrok.io");
+const socket = io.connect("https://5331e8cf8fd7.ngrok.io");
 //--- Animation ---
 let clips = null;
 let mixer = null;
@@ -27,6 +27,8 @@ let then = 0;
 let roomID = null;
 let distance = null;
 let commandFlag = false;
+let hp = 100;
+let enemyHP = 100;
 
 document.getElementById("makeRoom").addEventListener("click", makeRoom);
 document.getElementById("enterRoom").addEventListener("click", enterRoom);
@@ -49,57 +51,117 @@ socket.on("joinError", () => {
   alert("초대번호가 잘못되었습니다");
 });
 
-socket.on("showArButton", () => {
+socket.on("showArButton", (data) => {
   document.getElementById("overlay").style.visibility = "visible";
+  roomID = data;
 });
 
-socket.on('executeTurn', (data) => {
-  if(data.player1.id == socket.id){
+socket.on("executeTurn", (data) => {
+  if (data.player1.id == socket.id) {
     //player1이 나일때
-    if(data.player1.command == 'attack'){
+    if (data.player1.command == "attack") {
       myAttack();
-    }else{
+    } else if (data.player1.command == "defense") {
       myDefense();
+    } else {
+      myCounter();
     }
     setTimeout(() => {
-      if(data.player2.command == 'attack'){
+      if (data.player2.command == "attack") {
         enemyAttack();
+        if (data.player1.command == "attack") {
+          hp -= 10;
+          enemyHP -= 10;
+        } else if (data.player1.command == "defense") {
+          hp -= 5;
+        } else {
+          enemyHP -= 30;
+        }
       }
-      if(data.player2.command == 'defense'){
+      if (data.player2.command == "defense") {
         enemyDefense();
+        if (data.player1.command == "attack") {
+          enemyHP -= 5;
+        } else if (data.player1.command == "defense") {
+          hp -= 5;
+          enemyHP -= 5;
+        } else {
+          hp -= 10;
+        }
+      }
+      if (data.player2.command == "counter") {
+        enemyCounter();
+        if (data.player1.command == "attack") {
+          hp -= 30;
+        } else if (data.player1.command == "defense") {
+          enemyHP -= 10;
+        } else {
+          hp -= 15;
+          enemyHP -= 15;
+        }
       }
     }, 3000);
-  }else{
+  } else {
     //player2가 나일때
-    if(data.player1.command == 'attack'){
+    if (data.player1.command == "attack") {
       enemyAttack();
-    }else{
+    } else if (data.player1.command == "defense") {
       enemyDefense();
+    } else {
+      enemyCounter();
     }
     setTimeout(() => {
-      if(data.player2.command == 'attack'){
+      if (data.player2.command == "attack") {
         myAttack();
+        if (data.player1.command == "attack") {
+          hp -= 10;
+          enemyHP -= 10;
+        } else if (data.player1.command == "defense") {
+          enemyHP -= 5;
+        } else {
+          hp -= 30;
+        }
       }
-      if(data.player2.command == 'defense'){
+      if (data.player2.command == "defense") {
         myDefense();
+        if (data.player1.command == "attack") {
+          hp -= 5;
+        } else if (data.player1.command == "defense") {
+          hp -= 5;
+          enemyHP -= 5;
+        } else {
+          enemyHP -= 10;
+        }
+      }
+      if (data.player2.command == "counter") {
+        myCounter();
+        if (data.player1.command == "attack") {
+          enemyHP -= 30;
+        } else if (data.player1.command == "defense") {
+          hp -= 10;
+        } else {
+          hp -= 15;
+          enemyHP -= 15;
+        }
       }
     }, 3000);
   }
 
   setTimeout(() => {
     commandFlag = false;
+    document.getElementById("hpBar").innerHTML = `HP - ${hp}`;
   }, 6000);
   //commandFlag = false;
-})
+});
 
-function myAttack(){
+async function myAttack() {
   const playerModel = await model.children[0];
   const interval = await setInterval(() => {
-  if (playerModel.position.z < 0.4) {
-    playerModel.position.z += 0.05;
-  } else {
-    const clip = THREE.AnimationClip.findByName(
-      clips,
+    if (playerModel.position.z < 0.4) {
+      playerModel.position.z += 0.05;
+    } else {
+      const clip = THREE.AnimationClip.findByName(
+        clips,
         "knight_attack_2_heavy_weapon"
       );
       const action = mixer.clipAction(clip);
@@ -124,24 +186,28 @@ function myAttack(){
   }, 2000);
 }
 
-function myDefense(){
-  const clip = THREE.AnimationClip.findByName(
-    clips,
-      "knight_shield_block"
-    );
+function myDefense() {
+  const clip = THREE.AnimationClip.findByName(clips, "knight_shield_block");
   mixer.stopAllAction();
   const action = mixer.clipAction(clip);
   action.play();
 }
 
-function enemyAttack(){
+function myCounter() {
+  const clip = THREE.AnimationClip.findByName(clips, "knight_shield_block");
+  mixer.stopAllAction();
+  const action = mixer.clipAction(clip);
+  action.play();
+}
+
+async function enemyAttack() {
   const enemyModel = await model.children[1];
   const interval = await setInterval(() => {
-  if (enemyModel.position.z > -0.4) {
-    enemyModel.position.z -= 0.05;
-  } else {
-    const clip = THREE.AnimationClip.findByName(
-      clips,
+    if (enemyModel.position.z > -0.4) {
+      enemyModel.position.z -= 0.05;
+    } else {
+      const clip = THREE.AnimationClip.findByName(
+        clips,
         "knight_attack_2_heavy_weapon"
       );
       const action = EnemyMixer.clipAction(clip);
@@ -153,8 +219,8 @@ function enemyAttack(){
     clearInterval(interval);
 
     const newInterval = setInterval(() => {
-      if (enemyModel.position.z >= -0.5) {
-        enemyModel.position.z -= 0.05;
+      if (enemyModel.position.z <= 0.5) {
+        enemyModel.position.z += 0.05;
         const clip = THREE.AnimationClip.findByName(clips, "knight_idle");
         EnemyMixer.stopAllAction();
         const action = EnemyMixer.clipAction(clip);
@@ -166,11 +232,15 @@ function enemyAttack(){
   }, 2000);
 }
 
-function enemyDefense(){
-  const clip = THREE.AnimationClip.findByName(
-    clips,
-      "knight_shield_block"
-    );
+function enemyCounter() {
+  const clip = THREE.AnimationClip.findByName(clips, "knight_shield_block");
+  EnemyMixer.stopAllAction();
+  const action = EnemyMixer.clipAction(clip);
+  action.play();
+}
+
+function enemyDefense() {
+  const clip = THREE.AnimationClip.findByName(clips, "knight_shield_block");
   EnemyMixer.stopAllAction();
   const action = EnemyMixer.clipAction(clip);
   action.play();
@@ -247,9 +317,12 @@ const initScene = (gl, session) => {
     EnemyAction.play();
 
     document.getElementById("commandList").style.visibility = "visible";
+    document.getElementById("hpBar").style.visibility = "visible";
     xrButton.style.visibility = "hidden";
 
     document.getElementById("attack").addEventListener("click", attack);
+    document.getElementById("defence").addEventListener("click", defense);
+    document.getElementById("counter").addEventListener("click", counter);
   });
 
   controller = renderer.xr.getController(0);
@@ -264,10 +337,30 @@ const initScene = (gl, session) => {
   //---
 };
 
-async function attack() {
+function attack() {
   if (!commandFlag) {
     socket.emit("command", {
-      message: "command",
+      command: "attack",
+      roomID: roomID,
+    });
+    commandFlag = true;
+  }
+}
+
+function defense() {
+  if (!commandFlag) {
+    socket.emit("command", {
+      command: "defense",
+      roomID: roomID,
+    });
+    commandFlag = true;
+  }
+}
+
+function counter() {
+  if (!commandFlag) {
+    socket.emit("command", {
+      command: "counter",
       roomID: roomID,
     });
     commandFlag = true;

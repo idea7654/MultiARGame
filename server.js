@@ -20,10 +20,12 @@ io.on("connection", (socket) => {
     if (rooms[index].player1.id == data.id) {
       rooms[index].player1.gps = data.gps;
     } else {
-      rooms[index].player2.id = data.id;
+      rooms[index].player2.id = socket.id;
       rooms[index].player2.gps = data.gps;
     }
-    io.emit("sendPlayerInfo", rooms[index]);
+    if (rooms[index].player1.gps && rooms[index].player2.gps) {
+      io.to(rooms[index].roomId).emit("sendPlayerInfo", rooms[index]);
+    }
   });
 
   socket.on("disconnect", () => {
@@ -38,16 +40,15 @@ io.on("connection", (socket) => {
   socket.on("command", (data) => {
     const room = rooms.find((i) => i.roomId == data.roomID);
     if (room.player1.id == socket.id) {
-      room.player1.command = data.message;
+      room.player1.command = data.command;
     } else {
-      room.player2.command = data.message;
+      room.player2.command = data.command;
     }
-
     if (room.player1.command && room.player2.command) {
-      io.to(data.roomID).emit("excuteTurn", room);
+      io.to(data.roomID).emit("executeTurn", room);
+      room.player1.command = null;
+      room.player2.command = null;
     }
-    room.player1.command = null;
-    room.player2.command = null;
   });
 
   socket.on("CreateRoom", () => {
@@ -75,7 +76,7 @@ io.on("connection", (socket) => {
       if (i.roomId == data) {
         flag = true;
         socket.join(i.roomId);
-        io.to(i.roomId).emit("showArButton");
+        io.to(i.roomId).emit("showArButton", i.roomId);
         /* 테스트 코드 */
         i.player2.gps = {
           lat: 36.316918,
