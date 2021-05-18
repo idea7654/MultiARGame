@@ -17,7 +17,7 @@ let otherPlayer = null;
 let playerVector = null;
 let otherObject = null;
 const info = document.getElementById("info");
-const socket = io.connect("https://5331e8cf8fd7.ngrok.io");
+const socket = io.connect("https://b1c844c0bfd8.ngrok.io");
 //--- Animation ---
 let clips = null;
 let mixer = null;
@@ -29,6 +29,7 @@ let distance = null;
 let commandFlag = false;
 let hp = 100;
 let enemyHP = 100;
+let targetModel = null;
 
 document.getElementById("makeRoom").addEventListener("click", makeRoom);
 document.getElementById("enterRoom").addEventListener("click", enterRoom);
@@ -155,7 +156,8 @@ socket.on("executeTurn", (data) => {
 });
 
 async function myAttack() {
-  const playerModel = await model.children[0];
+  //const playerModel = await model.children[0];
+  const playerModel = await targetModel.children[0];
   const interval = await setInterval(() => {
     if (playerModel.position.z < 0.4) {
       playerModel.position.z += 0.05;
@@ -201,7 +203,8 @@ function myCounter() {
 }
 
 async function enemyAttack() {
-  const enemyModel = await model.children[1];
+  // const enemyModel = await model.children[1];
+  const enemyModel = await targetModel.children[1];
   const interval = await setInterval(() => {
     if (enemyModel.position.z > -0.4) {
       enemyModel.position.z -= 0.05;
@@ -316,13 +319,8 @@ const initScene = (gl, session) => {
     const EnemyAction = EnemyMixer.clipAction(EnemyClip);
     EnemyAction.play();
 
-    document.getElementById("commandList").style.visibility = "visible";
-    document.getElementById("hpBar").style.visibility = "visible";
-    xrButton.style.visibility = "hidden";
-
-    document.getElementById("attack").addEventListener("click", attack);
-    document.getElementById("defence").addEventListener("click", defense);
-    document.getElementById("counter").addEventListener("click", counter);
+    document.getElementById("setup").style.visibility = "visible";
+    document.getElementById("setup").addEventListener("click", setUp);
   });
 
   controller = renderer.xr.getController(0);
@@ -336,6 +334,11 @@ const initScene = (gl, session) => {
   getGPS();
   //---
 };
+
+function setUp() {
+  targetModel = model;
+  document.getElementById("setup").style.visibility = "hidden";
+}
 
 function attack() {
   if (!commandFlag) {
@@ -518,8 +521,11 @@ function updateAnimation(time) {
     EnemyMixer.update(deltaTime);
   }
 
-  if (distance && model) {
-    model.scale.set(distance / 10, distance / 10, distance / 10);
+  // if (distance && model) {
+  //   model.scale.set(distance / 10, distance / 10, distance / 10);
+  // }
+  if (distance && targetModel) {
+    targetModel.scale.set(distance / 10, distance / 10, distance / 10);
   }
 }
 
@@ -550,7 +556,7 @@ socket.on("sendPlayerInfo", async (data) => {
   } else {
     otherPlayer = await data.player1;
   }
-  if (otherPlayer && !otherObject && model) {
+  if (otherPlayer && !otherObject && model && targetModel) {
     // const dlat = -(otherPlayer.gps.lat - gps.lat);
     // const dlon = -(otherPlayer.gps.lon - gps.lon);
     const dlat = -(otherPlayer.gps.lat - fakeGps.lat);
@@ -558,12 +564,16 @@ socket.on("sendPlayerInfo", async (data) => {
     const x = dlat * 11100;
     const z = dlon * 11100;
     distance = Math.sqrt(x * x + z * z);
-    model.position.set(0, -1, z / 2).applyMatrix4(controller.matrixWorld);
-    model.quaternion.setFromRotationMatrix(controller.matrixWorld);
-    model.rotateY((-45 * Math.PI) / 180);
+    // model.position.set(0, -1, z / 2).applyMatrix4(controller.matrixWorld);
+    // model.quaternion.setFromRotationMatrix(controller.matrixWorld);
+    // model.rotateY((-45 * Math.PI) / 180);
+    targetModel.position.set(0, -1, z / 2).applyMatrix4(controller.matrixWorld);
+    targetModel.quaternion.setFromRotationMatrix(controller.matrixWorld);
+    targetModel.rotateY((-45 * Math.PI) / 180);
 
     otherObject = new THREE.Object3D();
-    otherObject.add(model);
+    // otherObject.add(model);
+    otherObject.add(targetModel);
     const angle = -((Math.atan2(z, x) * 180) / Math.PI);
     let realAngle = 0;
     if (angle < 0) {
@@ -575,6 +585,14 @@ socket.on("sendPlayerInfo", async (data) => {
     otherObject.name = otherPlayer.id;
     scene.add(otherObject);
     info.innerHTML = `확인해보세요! 당신의 compass값은${compassDegree}`;
+
+    document.getElementById("commandList").style.visibility = "visible";
+    document.getElementById("hpBar").style.visibility = "visible";
+    xrButton.style.visibility = "hidden";
+
+    document.getElementById("attack").addEventListener("click", attack);
+    document.getElementById("defence").addEventListener("click", defense);
+    document.getElementById("counter").addEventListener("click", counter);
   }
   // if (otherPlayer && otherObject && model) {
   //   // const dlat = -(otherPlayer.gps.lat - gps.lat);
