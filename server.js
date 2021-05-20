@@ -29,12 +29,17 @@ io.on("connection", (socket) => {
   });
 
   socket.on("disconnect", () => {
-    // players.forEach((element) => {
-    //   if (element.id === socket.id) {
-    //     const index = players.indexOf(element);
-    //     players.splice(index, 1);
-    //   }
-    // });
+    const findUser = rooms.find((i) => i.player1.id == socket.id);
+    if (findUser == undefined) {
+      const findUser2 = rooms.find((i) => i.player2.id == socket.id);
+      if (findUser2 != undefined) {
+        socket.leave(findUser2.roomId);
+        io.to(findUser2.roomId).emit("disconnectOtherPlayer");
+      }
+    } else {
+      socket.leave(findUser.roomId);
+      io.to(findUser.roomId).emit("disconnectOtherPlayer");
+    }
   });
 
   socket.on("command", (data) => {
@@ -53,6 +58,7 @@ io.on("connection", (socket) => {
 
   socket.on("CreateRoom", () => {
     const roomId = Math.random().toString(36).substr(2, 11);
+    //->테스트 동안은 간단하게
     rooms.push({
       roomId: roomId,
       player1: {
@@ -67,6 +73,7 @@ io.on("connection", (socket) => {
       },
     });
     socket.join(roomId);
+    console.log("작동");
     socket.emit("CreateRoom", roomId);
   });
 
@@ -77,11 +84,12 @@ io.on("connection", (socket) => {
         flag = true;
         socket.join(i.roomId);
         io.to(i.roomId).emit("showArButton", i.roomId);
-        /* 테스트 코드 */
+        //--- 테스트 코드
         i.player2.gps = {
           lat: 36.316918,
           lon: 127.367179,
         };
+        //---
         i.player2.id = socket.id;
       }
     });

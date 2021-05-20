@@ -17,7 +17,8 @@ let otherPlayer = null;
 let playerVector = null;
 let otherObject = null;
 const info = document.getElementById("info");
-const socket = io.connect("https://b1c844c0bfd8.ngrok.io");
+const socket = io.connect("https://13e7ee455cc6.ngrok.io");
+//4h2atlks2xj
 //--- Animation ---
 let clips = null;
 let mixer = null;
@@ -154,7 +155,9 @@ socket.on("executeTurn", (data) => {
   }, 6000);
   //commandFlag = false;
 });
-
+//스테이지 모델로 스테이지 설정
+//제한시간
+//hp안배
 async function myAttack() {
   //const playerModel = await model.children[0];
   const playerModel = await targetModel.children[0];
@@ -489,7 +492,9 @@ function getGPS() {
       roomID: roomID,
       id: socket.id,
       // gps: gps,
+      //--- 테스트 코드
       gps: fakeGps,
+      //-------------
       //degree: compassDegree,
     });
   }
@@ -525,7 +530,7 @@ function updateAnimation(time) {
   //   model.scale.set(distance / 10, distance / 10, distance / 10);
   // }
   if (distance && targetModel) {
-    targetModel.scale.set(distance / 10, distance / 10, distance / 10);
+    targetModel.scale.set(distance / 4, distance / 4, distance / 4);
   }
 }
 
@@ -559,8 +564,10 @@ socket.on("sendPlayerInfo", async (data) => {
   if (otherPlayer && !otherObject && model && targetModel) {
     // const dlat = -(otherPlayer.gps.lat - gps.lat);
     // const dlon = -(otherPlayer.gps.lon - gps.lon);
+    //--- 테스트 코드
     const dlat = -(otherPlayer.gps.lat - fakeGps.lat);
     const dlon = -(otherPlayer.gps.lon - fakeGps.lon);
+    //----------------
     const x = dlat * 11100;
     const z = dlon * 11100;
     distance = Math.sqrt(x * x + z * z);
@@ -594,6 +601,10 @@ socket.on("sendPlayerInfo", async (data) => {
     document.getElementById("defence").addEventListener("click", defense);
     document.getElementById("counter").addEventListener("click", counter);
   }
+
+  socket.on("disconnectOtherPlayer", () => {
+    //여기서 상대방 접속 끊겼을 때 할ㄹ 처리...
+  });
   // if (otherPlayer && otherObject && model) {
   //   // const dlat = -(otherPlayer.gps.lat - gps.lat);
   //   // const dlon = -(otherPlayer.gps.lon - gps.lon);
