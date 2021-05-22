@@ -64,16 +64,17 @@ io.on("connection", (socket) => {
       player1: {
         id: socket.id,
         gps: null,
+        character: null,
         command: null,
       },
       player2: {
         id: null,
         gps: null,
+        character: null,
         command: null,
       },
     });
     socket.join(roomId);
-    console.log("작동");
     socket.emit("CreateRoom", roomId);
   });
 
@@ -96,5 +97,24 @@ io.on("connection", (socket) => {
     if (!flag) {
       socket.emit("joinError");
     }
+  });
+
+  socket.on("selectCharacter", (data) => {
+    rooms.forEach((i) => {
+      if (i.roomId == data.roomID) {
+        if (i.player1.id == socket.id) {
+          //1번 캐릭터 선택 처리
+          i.player1.character = data.name;
+        } else {
+          //2번 캐릭터 선택 처리
+          i.player2.character = data.name;
+        }
+      }
+      if (i.player1.character && i.player2.character) {
+        console.log("작동");
+        //socket.emit("selectCharacter", i);
+        io.to(i.roomId).emit("selectCharacter", i);
+      }
+    });
   });
 });

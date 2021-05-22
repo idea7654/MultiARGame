@@ -17,11 +17,13 @@ let otherPlayer = null;
 let playerVector = null;
 let otherObject = null;
 const info = document.getElementById("info");
-const socket = io.connect("https://13e7ee455cc6.ngrok.io");
+const socket = io.connect("https://1facd36a4ecc.ngrok.io");
 //4h2atlks2xj
 //--- Animation ---
-let clips = null;
-let mixer = null;
+//let clips = null;
+//let mixer = null;
+let knightClips = null;
+let myMixer = null;
 let EnemyMixer = null;
 let then = 0;
 //-----------------
@@ -31,6 +33,9 @@ let commandFlag = false;
 let hp = 100;
 let enemyHP = 100;
 let targetModel = null;
+let knight = null;
+let selectFlag = false;
+let copyKnight = null;
 
 document.getElementById("makeRoom").addEventListener("click", makeRoom);
 document.getElementById("enterRoom").addEventListener("click", enterRoom);
@@ -44,7 +49,6 @@ function enterRoom() {
 
 socket.on("CreateRoom", (data) => {
   document.getElementById("GetCode").style.visibility = "visible";
-  console.log(data);
   document.getElementById("GetCode").innerHTML = data;
   roomID = data;
 });
@@ -158,6 +162,7 @@ socket.on("executeTurn", (data) => {
 //스테이지 모델로 스테이지 설정
 //제한시간
 //hp안배
+//방 정보
 async function myAttack() {
   //const playerModel = await model.children[0];
   const playerModel = await targetModel.children[0];
@@ -166,10 +171,10 @@ async function myAttack() {
       playerModel.position.z += 0.05;
     } else {
       const clip = THREE.AnimationClip.findByName(
-        clips,
+        knightClips,
         "knight_attack_2_heavy_weapon"
       );
-      const action = mixer.clipAction(clip);
+      const action = myMixer.clipAction(clip);
       action.play();
     }
   }, 10);
@@ -180,9 +185,9 @@ async function myAttack() {
     const newInterval = setInterval(() => {
       if (playerModel.position.z >= -0.5) {
         playerModel.position.z -= 0.05;
-        const clip = THREE.AnimationClip.findByName(clips, "knight_idle");
-        mixer.stopAllAction();
-        const action = mixer.clipAction(clip);
+        const clip = THREE.AnimationClip.findByName(knightClips, "knight_idle");
+        myMixer.stopAllAction();
+        const action = myMixer.clipAction(clip);
         action.play();
       } else {
         clearInterval(newInterval);
@@ -192,16 +197,22 @@ async function myAttack() {
 }
 
 function myDefense() {
-  const clip = THREE.AnimationClip.findByName(clips, "knight_shield_block");
-  mixer.stopAllAction();
-  const action = mixer.clipAction(clip);
+  const clip = THREE.AnimationClip.findByName(
+    knightClips,
+    "knight_shield_block"
+  );
+  myMixer.stopAllAction();
+  const action = myMixer.clipAction(clip);
   action.play();
 }
 
 function myCounter() {
-  const clip = THREE.AnimationClip.findByName(clips, "knight_shield_block");
-  mixer.stopAllAction();
-  const action = mixer.clipAction(clip);
+  const clip = THREE.AnimationClip.findByName(
+    knightClips,
+    "knight_shield_block"
+  );
+  myMixer.stopAllAction();
+  const action = myMixer.clipAction(clip);
   action.play();
 }
 
@@ -213,7 +224,7 @@ async function enemyAttack() {
       enemyModel.position.z -= 0.05;
     } else {
       const clip = THREE.AnimationClip.findByName(
-        clips,
+        knightClips,
         "knight_attack_2_heavy_weapon"
       );
       const action = EnemyMixer.clipAction(clip);
@@ -227,7 +238,7 @@ async function enemyAttack() {
     const newInterval = setInterval(() => {
       if (enemyModel.position.z <= 0.5) {
         enemyModel.position.z += 0.05;
-        const clip = THREE.AnimationClip.findByName(clips, "knight_idle");
+        const clip = THREE.AnimationClip.findByName(knightClips, "knight_idle");
         EnemyMixer.stopAllAction();
         const action = EnemyMixer.clipAction(clip);
         action.play();
@@ -239,14 +250,20 @@ async function enemyAttack() {
 }
 
 function enemyCounter() {
-  const clip = THREE.AnimationClip.findByName(clips, "knight_shield_block");
+  const clip = THREE.AnimationClip.findByName(
+    knightClips,
+    "knight_shield_block"
+  );
   EnemyMixer.stopAllAction();
   const action = EnemyMixer.clipAction(clip);
   action.play();
 }
 
 function enemyDefense() {
-  const clip = THREE.AnimationClip.findByName(clips, "knight_shield_block");
+  const clip = THREE.AnimationClip.findByName(
+    knightClips,
+    "knight_shield_block"
+  );
   EnemyMixer.stopAllAction();
   const action = EnemyMixer.clipAction(clip);
   action.play();
@@ -290,25 +307,33 @@ const initScene = (gl, session) => {
 
   const gltfLoader = new GLTFLoader();
   gltfLoader.load("knight.gltf", (gltf) => {
-    const copy = SkeletonUtils.clone(gltf.scene);
+    //const copy = SkeletonUtils.clone(gltf.scene);
+    //knight = SkeletonUtils.clone(gltf.scene);
+    knight = gltf.scene;
+    /*
     const box = new THREE.Box3().setFromObject(gltf.scene);
     const c = box.getCenter(new THREE.Vector3());
     const size = box.getSize(new THREE.Vector3());
 
     gltf.scene.position.set(-c.x, size.y / 2 - c.y, -c.z);
     gltf.scene.scale.set(0.1, 0.1, 0.1);
+    */
+    /*
     model = new THREE.Object3D();
     gltf.scene.position.set(0, 0, -0.5);
-    //gltf.scene.rotateY(Math.PI);
     model.add(gltf.scene);
     copy.scale.set(0.1, 0.1, 0.1);
     copy.position.set(0, 0, 0.5);
     copy.rotateY(Math.PI);
     model.add(copy);
+    */
 
-    mixer = new THREE.AnimationMixer(gltf.scene);
-    clips = gltf.animations;
+    knight.scale.set(0.1, 0.1, 0.1);
 
+    //mixer = new THREE.AnimationMixer(gltf.scene);
+    knightClips = gltf.animations;
+    copyKnight = SkeletonUtils.clone(gltf.scene);
+    /*
     EnemyMixer = new THREE.AnimationMixer(copy);
 
     const clip = THREE.AnimationClip.findByName(clips, "knight_idle");
@@ -321,10 +346,17 @@ const initScene = (gl, session) => {
     );
     const EnemyAction = EnemyMixer.clipAction(EnemyClip);
     EnemyAction.play();
+    */
 
+    // document.getElementById("setup").style.visibility = "visible";
+    // document.getElementById("setup").addEventListener("click", setUp);
     document.getElementById("setup").style.visibility = "visible";
-    document.getElementById("setup").addEventListener("click", setUp);
+    document.getElementById("knight").addEventListener("click", cha_knight);
   });
+  model = new THREE.Object3D();
+  //document.getElementById("setup").style.visibility = "visible";
+  //document.getElementById("setup").addEventListener("click", setUp);
+  //document.getElementById("knight").addEventListener("click", cha_knight);
 
   controller = renderer.xr.getController(0);
   renderer.setPixelRatio(window.devicePixelRatio); //장치 픽셀 비율 설정
@@ -338,9 +370,27 @@ const initScene = (gl, session) => {
   //---
 };
 
-function setUp() {
-  targetModel = model;
-  document.getElementById("setup").style.visibility = "hidden";
+function cha_knight() {
+  if (knight && !selectFlag) {
+    // knight.position.set(0, 0, -0.5);
+    // model.add(knight);
+    // selectFlag = true;
+    selectCharacter(knight, "knight");
+    myMixer = new THREE.AnimationMixer(knight);
+    const clip = THREE.AnimationClip.findByName(knightClips, "knight_idle");
+    const action = myMixer.clipAction(clip);
+    action.play();
+    selectFlag = true;
+  }
+}
+
+function selectCharacter(object, name) {
+  object.position.set(0, 0, -0.5);
+  model.add(object);
+  socket.emit("selectCharacter", {
+    name,
+    roomID,
+  });
 }
 
 function attack() {
@@ -521,8 +571,8 @@ function updateAnimation(time) {
   time *= 0.001;
   const deltaTime = time - then;
   then = time;
-  if (mixer && EnemyMixer) {
-    mixer.update(deltaTime);
+  if (myMixer && EnemyMixer) {
+    myMixer.update(deltaTime);
     EnemyMixer.update(deltaTime);
   }
 
@@ -605,6 +655,41 @@ socket.on("sendPlayerInfo", async (data) => {
   socket.on("disconnectOtherPlayer", () => {
     //여기서 상대방 접속 끊겼을 때 할ㄹ 처리...
   });
+  socket.on("selectCharacter", (data) => {
+    if (data.player1.id == socket.id) {
+      const copy = findModel(data.player2.character);
+      //const copy = SkeletonUtils.clone(OtherModel);
+      copy.position.set(0, 0, 0.5);
+      copy.scale.set(0.1, 0.1, 0.1);
+      copy.rotateY(Math.PI);
+      model.add(copy);
+      EnemyMixer = new THREE.AnimationMixer(copy);
+      document.getElementById("setup").style.visibility = "hidden";
+      const clip = THREE.AnimationClip.findByName(knightClips, "knight_idle");
+      const action = EnemyMixer.clipAction(clip);
+      action.play();
+      targetModel = model;
+    } else {
+      const copy = findModel(data.player1.character);
+      copy.position.set(0, 0, 0.5);
+      copy.scale.set(0.1, 0.1, 0.1);
+      copy.rotateY(Math.PI);
+      model.add(copy);
+      EnemyMixer = new THREE.AnimationMixer(copy);
+      document.getElementById("setup").style.visibility = "hidden";
+      const clip = THREE.AnimationClip.findByName(knightClips, "knight_idle");
+      const action = EnemyMixer.clipAction(clip);
+      action.play();
+      targetModel = model;
+    }
+  });
+
+  function findModel(name) {
+    switch (name) {
+      case "knight":
+        return copyKnight;
+    }
+  }
   // if (otherPlayer && otherObject && model) {
   //   // const dlat = -(otherPlayer.gps.lat - gps.lat);
   //   // const dlon = -(otherPlayer.gps.lon - gps.lon);
