@@ -3,6 +3,7 @@ const app = express();
 const cors = require("cors");
 
 let rooms = [];
+let i = 1;
 app.use(cors({ credentials: true }));
 //app.use(express.static("public"));
 
@@ -57,8 +58,9 @@ io.on("connection", (socket) => {
   });
 
   socket.on("CreateRoom", () => {
-    const roomId = Math.random().toString(36).substr(2, 11);
+    //const roomId = Math.random().toString(36).substr(2, 11);
     //->테스트 동안은 간단하게
+    const roomId = i;
     rooms.push({
       roomId: roomId,
       player1: {
@@ -76,6 +78,7 @@ io.on("connection", (socket) => {
     });
     socket.join(roomId);
     socket.emit("CreateRoom", roomId);
+    i++;
   });
 
   socket.on("enterRoom", (data) => {

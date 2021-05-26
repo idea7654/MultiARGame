@@ -17,7 +17,7 @@ let otherPlayer = null;
 let playerVector = null;
 let otherObject = null;
 const info = document.getElementById("info");
-const socket = io.connect("https://1facd36a4ecc.ngrok.io");
+const socket = io.connect("https://c6db68149482.ngrok.io");
 //4h2atlks2xj
 //--- Animation ---
 //let clips = null;
@@ -26,6 +26,9 @@ let knightClips = null;
 let myMixer = null;
 let EnemyMixer = null;
 let then = 0;
+let knightAnimations = null;
+let wolfClips = null;
+let wolfAnimations = null;
 //-----------------
 let roomID = null;
 let distance = null;
@@ -36,11 +39,29 @@ let targetModel = null;
 let knight = null;
 let selectFlag = false;
 let copyKnight = null;
+let wolf = null;
+let copyWolf = null;
+let myCharacters = [];
+let div = null;
+
+if (window.localStorage.getItem("myCharacters") == null) {
+  const knightJson = ["knight"];
+  window.localStorage.setItem("myCharacters", JSON.stringify(knightJson));
+  myCharacters = JSON.parse(window.localStorage.getItem("myCharacters"));
+} else {
+  myCharacters = JSON.parse(window.localStorage.getItem("myCharacters"));
+  // localStorage.removeItem("myCharacters");
+}
 
 document.getElementById("makeRoom").addEventListener("click", makeRoom);
 document.getElementById("enterRoom").addEventListener("click", enterRoom);
 function makeRoom() {
   socket.emit("CreateRoom");
+  if (myCharacters.findIndex((i) => i == "wolf") == -1) {
+    myCharacters.push("wolf");
+    window.localStorage.removeItem("myCharacters");
+    window.localStorage.setItem("myCharacters", JSON.stringify(myCharacters));
+  }
 }
 function enterRoom() {
   const inviteCode = document.getElementById("inviteCode").value;
@@ -66,15 +87,15 @@ socket.on("executeTurn", (data) => {
   if (data.player1.id == socket.id) {
     //player1이 나일때
     if (data.player1.command == "attack") {
-      myAttack();
+      myAttack(data.player1.character);
     } else if (data.player1.command == "defense") {
-      myDefense();
+      myDefense(data.player1.character);
     } else {
-      myCounter();
+      myCounter(data.player1.character);
     }
     setTimeout(() => {
       if (data.player2.command == "attack") {
-        enemyAttack();
+        enemyAttack(data.player2.character);
         if (data.player1.command == "attack") {
           hp -= 10;
           enemyHP -= 10;
@@ -85,7 +106,7 @@ socket.on("executeTurn", (data) => {
         }
       }
       if (data.player2.command == "defense") {
-        enemyDefense();
+        enemyDefense(data.player2.character);
         if (data.player1.command == "attack") {
           enemyHP -= 5;
         } else if (data.player1.command == "defense") {
@@ -96,7 +117,7 @@ socket.on("executeTurn", (data) => {
         }
       }
       if (data.player2.command == "counter") {
-        enemyCounter();
+        enemyCounter(data.player2.character);
         if (data.player1.command == "attack") {
           hp -= 30;
         } else if (data.player1.command == "defense") {
@@ -110,15 +131,15 @@ socket.on("executeTurn", (data) => {
   } else {
     //player2가 나일때
     if (data.player1.command == "attack") {
-      enemyAttack();
+      enemyAttack(data.player1.character);
     } else if (data.player1.command == "defense") {
-      enemyDefense();
+      enemyDefense(data.player1.character);
     } else {
-      enemyCounter();
+      enemyCounter(data.player1.character);
     }
     setTimeout(() => {
       if (data.player2.command == "attack") {
-        myAttack();
+        myAttack(data.player2.character);
         if (data.player1.command == "attack") {
           hp -= 10;
           enemyHP -= 10;
@@ -129,7 +150,7 @@ socket.on("executeTurn", (data) => {
         }
       }
       if (data.player2.command == "defense") {
-        myDefense();
+        myDefense(data.player2.character);
         if (data.player1.command == "attack") {
           hp -= 5;
         } else if (data.player1.command == "defense") {
@@ -140,7 +161,7 @@ socket.on("executeTurn", (data) => {
         }
       }
       if (data.player2.command == "counter") {
-        myCounter();
+        myCounter(data.player2.character);
         if (data.player1.command == "attack") {
           enemyHP -= 30;
         } else if (data.player1.command == "defense") {
@@ -163,16 +184,20 @@ socket.on("executeTurn", (data) => {
 //제한시간
 //hp안배
 //방 정보
-async function myAttack() {
+async function myAttack(character) {
   //const playerModel = await model.children[0];
   const playerModel = await targetModel.children[0];
   const interval = await setInterval(() => {
     if (playerModel.position.z < 0.4) {
       playerModel.position.z += 0.05;
     } else {
+      // const clip = THREE.AnimationClip.findByName(
+      //   knightClips,
+      //   knightAnimations.attack
+      // );
       const clip = THREE.AnimationClip.findByName(
-        knightClips,
-        "knight_attack_2_heavy_weapon"
+        eval(`${character}Clips`),
+        eval(`${character}Animations`).attack
       );
       const action = myMixer.clipAction(clip);
       action.play();
@@ -185,7 +210,14 @@ async function myAttack() {
     const newInterval = setInterval(() => {
       if (playerModel.position.z >= -0.5) {
         playerModel.position.z -= 0.05;
-        const clip = THREE.AnimationClip.findByName(knightClips, "knight_idle");
+        // const clip = THREE.AnimationClip.findByName(
+        //   knightClips,
+        //   knightAnimations.idle
+        // );
+        const clip = THREE.AnimationClip.findByName(
+          eval(`${character}Clips`),
+          eval(`${character}Animations`).idle
+        );
         myMixer.stopAllAction();
         const action = myMixer.clipAction(clip);
         action.play();
@@ -196,36 +228,48 @@ async function myAttack() {
   }, 2000);
 }
 
-function myDefense() {
+function myDefense(character) {
+  // const clip = THREE.AnimationClip.findByName(
+  //   knightClips,
+  //   knightAnimations.defense
+  // );
   const clip = THREE.AnimationClip.findByName(
-    knightClips,
-    "knight_shield_block"
+    eval(`${character}Clips`),
+    eval(`${character}Animations`).defense
   );
   myMixer.stopAllAction();
   const action = myMixer.clipAction(clip);
   action.play();
 }
 
-function myCounter() {
+function myCounter(character) {
+  // const clip = THREE.AnimationClip.findByName(
+  //   knightClips,
+  //   knightAnimations.defense
+  // );
   const clip = THREE.AnimationClip.findByName(
-    knightClips,
-    "knight_shield_block"
+    eval(`${character}Clips`),
+    eval(`${character}Animations`).defense
   );
   myMixer.stopAllAction();
   const action = myMixer.clipAction(clip);
   action.play();
 }
 
-async function enemyAttack() {
+async function enemyAttack(character) {
   // const enemyModel = await model.children[1];
   const enemyModel = await targetModel.children[1];
   const interval = await setInterval(() => {
     if (enemyModel.position.z > -0.4) {
       enemyModel.position.z -= 0.05;
     } else {
+      // const clip = THREE.AnimationClip.findByName(
+      //   knightClips,
+      //   knightAnimations.attack
+      // );
       const clip = THREE.AnimationClip.findByName(
-        knightClips,
-        "knight_attack_2_heavy_weapon"
+        eval(`${character}Clips`),
+        eval(`${character}Animations`).attack
       );
       const action = EnemyMixer.clipAction(clip);
       action.play();
@@ -238,7 +282,14 @@ async function enemyAttack() {
     const newInterval = setInterval(() => {
       if (enemyModel.position.z <= 0.5) {
         enemyModel.position.z += 0.05;
-        const clip = THREE.AnimationClip.findByName(knightClips, "knight_idle");
+        // const clip = THREE.AnimationClip.findByName(
+        //   knightClips,
+        //   knightAnimations.idle
+        // );
+        const clip = THREE.AnimationClip.findByName(
+          eval(`${character}Clips`),
+          eval(`${character}Animations`).idle
+        );
         EnemyMixer.stopAllAction();
         const action = EnemyMixer.clipAction(clip);
         action.play();
@@ -250,9 +301,13 @@ async function enemyAttack() {
 }
 
 function enemyCounter() {
+  // const clip = THREE.AnimationClip.findByName(
+  //   knightClips,
+  //   knightAnimations.defense
+  // );
   const clip = THREE.AnimationClip.findByName(
-    knightClips,
-    "knight_shield_block"
+    eval(`${character}Clips`),
+    eval(`${character}Animations`).defense
   );
   EnemyMixer.stopAllAction();
   const action = EnemyMixer.clipAction(clip);
@@ -260,9 +315,13 @@ function enemyCounter() {
 }
 
 function enemyDefense() {
+  // const clip = THREE.AnimationClip.findByName(
+  //   knightClips,
+  //   knightAnimations.defense
+  // );
   const clip = THREE.AnimationClip.findByName(
-    knightClips,
-    "knight_shield_block"
+    eval(`${character}Clips`),
+    eval(`${character}Animations`).defense
   );
   EnemyMixer.stopAllAction();
   const action = EnemyMixer.clipAction(clip);
@@ -307,56 +366,74 @@ const initScene = (gl, session) => {
 
   const gltfLoader = new GLTFLoader();
   gltfLoader.load("knight.gltf", (gltf) => {
-    //const copy = SkeletonUtils.clone(gltf.scene);
-    //knight = SkeletonUtils.clone(gltf.scene);
     knight = gltf.scene;
-    /*
-    const box = new THREE.Box3().setFromObject(gltf.scene);
-    const c = box.getCenter(new THREE.Vector3());
-    const size = box.getSize(new THREE.Vector3());
-
-    gltf.scene.position.set(-c.x, size.y / 2 - c.y, -c.z);
-    gltf.scene.scale.set(0.1, 0.1, 0.1);
-    */
-    /*
-    model = new THREE.Object3D();
-    gltf.scene.position.set(0, 0, -0.5);
-    model.add(gltf.scene);
-    copy.scale.set(0.1, 0.1, 0.1);
-    copy.position.set(0, 0, 0.5);
-    copy.rotateY(Math.PI);
-    model.add(copy);
-    */
 
     knight.scale.set(0.1, 0.1, 0.1);
 
-    //mixer = new THREE.AnimationMixer(gltf.scene);
     knightClips = gltf.animations;
+    knightAnimations = {
+      idle: "knight_idle",
+      defense: "knight_shield_block",
+      attack: "knight_attack_2_heavy_weapon",
+    };
     copyKnight = SkeletonUtils.clone(gltf.scene);
-    /*
-    EnemyMixer = new THREE.AnimationMixer(copy);
+    copyKnight.rotateY(Math.PI);
+    gltfLoader.load("wolf.glb", (glb) => {
+      wolf = glb.scene;
+      wolf.scale.set(0.1, 0.1, 0.1);
+      wolfClips = glb.animations;
+      wolfAnimations = {
+        idle: "04_Idle_Armature_0",
+        defense: "03_creep_Armature_0",
+        attack: "01_Run_Armature_0",
+      };
+      copyWolf = SkeletonUtils.clone(glb.scene);
+      copyWolf.rotateY(Math.PI);
+      //document.getElementById("wolf").addEventListener("click", cha_wolf);
+      //document.getElementById("setup").style.visibility = "visible";
+      //document.getElementById("knight").addEventListener("click", cha_knight);
+      div = document.createElement("div");
+      div.style.borderStyle = "double";
+      div.style.position = "absolute";
+      div.style.left = "50%";
+      div.style.transform = "translateX(-50%)";
+      div.style.top = "40%";
+      div.style.width = "10em";
+      div.style.backgroundColor = "white";
 
-    const clip = THREE.AnimationClip.findByName(clips, "knight_idle");
-    const action = mixer.clipAction(clip);
-    action.play();
-
-    const EnemyClip = THREE.AnimationClip.findByName(
-      clips,
-      "knight_walk_in_place"
-    );
-    const EnemyAction = EnemyMixer.clipAction(EnemyClip);
-    EnemyAction.play();
-    */
-
-    // document.getElementById("setup").style.visibility = "visible";
-    // document.getElementById("setup").addEventListener("click", setUp);
-    document.getElementById("setup").style.visibility = "visible";
-    document.getElementById("knight").addEventListener("click", cha_knight);
+      // myCharacters.forEach((data) => {
+      //   const child = document.createElement("div");
+      //   child.style.marginTop = "2em";
+      //   child.style.marginBottom = "2em";
+      //   child.style.borderStyle = "double";
+      //   child.style.innerHTML = data;
+      //   child.addEventListener("click", cha_select(data));
+      //   div.appendChild(child);
+      // });
+      for (let i = 0; i < myCharacters.length; i++) {
+        let child = document.createElement("div");
+        child.style.marginTop = "2em";
+        child.style.marginBottom = "2em";
+        child.style.borderStyle = "double";
+        console.log(myCharacters[i]);
+        child.innerHTML = myCharacters[i];
+        //child.addEventListener("click", cha_select(myCharacters[i]));
+        switch (myCharacters[i]) {
+          case "knight":
+            child.addEventListener("click", cha_knight);
+            break;
+          case "wolf":
+            child.addEventListener("click", cha_wolf);
+            break;
+        }
+        div.appendChild(child);
+      }
+      //document.appendChild(div);
+      document.getElementById("overlay").appendChild(div);
+    });
   });
+
   model = new THREE.Object3D();
-  //document.getElementById("setup").style.visibility = "visible";
-  //document.getElementById("setup").addEventListener("click", setUp);
-  //document.getElementById("knight").addEventListener("click", cha_knight);
 
   controller = renderer.xr.getController(0);
   renderer.setPixelRatio(window.devicePixelRatio); //장치 픽셀 비율 설정
@@ -370,19 +447,50 @@ const initScene = (gl, session) => {
   //---
 };
 
-function cha_knight() {
-  if (knight && !selectFlag) {
-    // knight.position.set(0, 0, -0.5);
-    // model.add(knight);
-    // selectFlag = true;
-    selectCharacter(knight, "knight");
-    myMixer = new THREE.AnimationMixer(knight);
-    const clip = THREE.AnimationClip.findByName(knightClips, "knight_idle");
+function cha_wolf() {
+  if (wolf && !selectFlag) {
+    selectCharacter(wolf, "wolf");
+    myMixer = new THREE.AnimationMixer(wolf);
+    const clip = THREE.AnimationClip.findByName(wolfClips, wolfAnimations.idle);
     const action = myMixer.clipAction(clip);
     action.play();
     selectFlag = true;
   }
 }
+
+function cha_knight() {
+  if (knight && !selectFlag) {
+    // knight.position.set(0, 0, -0.5);
+    // model.add(knight);
+    // selectFlag = true;
+    console.log("클릭됨");
+    selectCharacter(knight, "knight");
+    myMixer = new THREE.AnimationMixer(knight);
+    const clip = THREE.AnimationClip.findByName(
+      knightClips,
+      knightAnimations.idle
+    );
+    const action = myMixer.clipAction(clip);
+    action.play();
+    selectFlag = true;
+  }
+}
+
+// function cha_select(character) {
+//   const evalCha = eval(character);
+//   if (evalCha && !selectFlag) {
+//     selectCharacter(evalCha, character);
+//     console.log(eval(`${character}Clips`), eval(`${character}Animations`));
+//     myMixer = new THREE.AnimationMixer();
+//     const clip = THREE.AnimationClip.findByName(
+//       eval(`${character}Clips`),
+//       eval(`${character}Animations`).idle
+//     );
+//     const action = myMixer.clipAction(clip);
+//     action.play();
+//     selectFlag = true;
+//   }
+// }
 
 function selectCharacter(object, name) {
   object.position.set(0, 0, -0.5);
@@ -621,9 +729,6 @@ socket.on("sendPlayerInfo", async (data) => {
     const x = dlat * 11100;
     const z = dlon * 11100;
     distance = Math.sqrt(x * x + z * z);
-    // model.position.set(0, -1, z / 2).applyMatrix4(controller.matrixWorld);
-    // model.quaternion.setFromRotationMatrix(controller.matrixWorld);
-    // model.rotateY((-45 * Math.PI) / 180);
     targetModel.position.set(0, -1, z / 2).applyMatrix4(controller.matrixWorld);
     targetModel.quaternion.setFromRotationMatrix(controller.matrixWorld);
     targetModel.rotateY((-45 * Math.PI) / 180);
@@ -661,11 +766,15 @@ socket.on("sendPlayerInfo", async (data) => {
       //const copy = SkeletonUtils.clone(OtherModel);
       copy.position.set(0, 0, 0.5);
       copy.scale.set(0.1, 0.1, 0.1);
-      copy.rotateY(Math.PI);
+      ///copy.rotateY(Math.PI);
       model.add(copy);
       EnemyMixer = new THREE.AnimationMixer(copy);
       document.getElementById("setup").style.visibility = "hidden";
-      const clip = THREE.AnimationClip.findByName(knightClips, "knight_idle");
+      //const clip = THREE.AnimationClip.findByName(knightClips, "knight_idle");
+      const clip = THREE.AnimationClip.findByName(
+        eval(`${data.player2.character}Clips`),
+        eval(`${data.player2.character}Animations`).idle
+      );
       const action = EnemyMixer.clipAction(clip);
       action.play();
       targetModel = model;
@@ -673,11 +782,16 @@ socket.on("sendPlayerInfo", async (data) => {
       const copy = findModel(data.player1.character);
       copy.position.set(0, 0, 0.5);
       copy.scale.set(0.1, 0.1, 0.1);
-      copy.rotateY(Math.PI);
+      // copy.rotateY(Math.PI);
       model.add(copy);
       EnemyMixer = new THREE.AnimationMixer(copy);
-      document.getElementById("setup").style.visibility = "hidden";
-      const clip = THREE.AnimationClip.findByName(knightClips, "knight_idle");
+      //document.getElementById("setup").style.visibility = "hidden";
+      div.style.visibility = "hidden";
+      // const clip = THREE.AnimationClip.findByName(knightClips, "knight_idle");
+      const clip = THREE.AnimationClip.findByName(
+        eval(`${data.player2.character}Clips`),
+        eval(`${data.player2.character}Animations`).idle
+      );
       const action = EnemyMixer.clipAction(clip);
       action.play();
       targetModel = model;
@@ -688,6 +802,8 @@ socket.on("sendPlayerInfo", async (data) => {
     switch (name) {
       case "knight":
         return copyKnight;
+      case "wolf":
+        return wolf;
     }
   }
   // if (otherPlayer && otherObject && model) {
