@@ -15,17 +15,49 @@
     ></script>
     <script src="https://unpkg.com/axios/dist/axios.min.js"></script>
     <title>MultiAR</title>
+    <style>
+      #my_modal {
+        display: none;
+        width: 300px;
+        padding: 20px 60px;
+        background-color: #fefefe;
+        border: 1px solid #888;
+        border-radius: 3px;
+      }
+
+      #my_modal .modal_close_btn {
+        position: absolute;
+        top: 10px;
+        right: 10px;
+      }
+    </style>
   </head>
 
   <body>
     <div id="overlay" style="visibility: hidden">
       <div class="info-area">
         <div id="info"></div>
-        <div style="position: fixed; bottom: 5em; left: 50%; transform: translateX(-50%);">
+        <div
+          style="
+            position: fixed;
+            bottom: 5em;
+            left: 50%;
+            transform: translateX(-50%);
+          "
+        >
           <button id="xr-button" disabled>XR not found</button>
         </div>
       </div>
-      <div id="hpBar" style="position: absolute; left: 50%; transform: translateX(-50%); visibility: hidden; bottom: 10em;">
+      <div
+        id="hpBar"
+        style="
+          position: absolute;
+          left: 50%;
+          transform: translateX(-50%);
+          visibility: hidden;
+          bottom: 10em;
+        "
+      >
         HP - 100
       </div>
       <div
@@ -40,16 +72,46 @@
           transform: translateX(-50%);
         "
       >
-        <div id="attack" style="border-style: double; width: 5em; text-align: center; background-color: white;">공격</div>
-        <div id="defence" style="border-style: double; width: 5em; text-align: center; background-color: white;">방어</div>
-        <div id="counter" style="border-style: double; width: 5em; text-align: center; background-color: white;">반격</div>
+        <div
+          id="attack"
+          style="
+            border-style: double;
+            width: 5em;
+            text-align: center;
+            background-color: white;
+          "
+        >
+          공격
+        </div>
+        <div
+          id="defence"
+          style="
+            border-style: double;
+            width: 5em;
+            text-align: center;
+            background-color: white;
+          "
+        >
+          방어
+        </div>
+        <div
+          id="counter"
+          style="
+            border-style: double;
+            width: 5em;
+            text-align: center;
+            background-color: white;
+          "
+        >
+          반격
+        </div>
       </div>
       <!-- <div id="setup" style="border-style: double; position: absolute; left: 50%; transform: translateX(-50%); top: 40%; visibility: hidden; width: 10em; background-color: white;">
         <div id="knight" style="margin-top: 2em; margin-bottom: 2em; border-style: double;">기사</div>
         <div id="wolf" style="margin-top: 2em; margin-bottom: 2em; border-style: double;">늑대</div>
       </div> -->
     </div>
-    
+
     <div id="landing" style="text-align: center">
       <h1>AR 멀티 게임</h1>
       <div
@@ -62,13 +124,102 @@
       >
         <h2 id="makeRoom">방 만들기</h2>
       </div>
-      <h3 id="GetCode" style="visibility: hidden;">초대코드</h2>
+      <h3 id="GetCode" style="visibility: hidden">초대코드</h3>
+      <div style="border-style: double; margin-left: 5em; margin-right: 5em">
+        <h3>방 찾기</h3>
+      </div>
       <div style="margin-top: 5em">
         <h2>초대 코드 입력하기</h2>
         <input type="text" id="inviteCode" />
         <button id="enterRoom">참여</button>
       </div>
+      <div
+        id="myInfo"
+        style="
+          border-style: double;
+          margin-left: 5em;
+          margin-right: 5em;
+          margin-top: 5em;
+        "
+      >
+        <h3>내 정보</h3>
+      </div>
+    </div>
+    <div id="my_modal">
+      <div>
+        내 보유 캐릭터
+        <ul id="charaList"></ul>
+      </div>
+      <a class="modal_close_btn">닫기</a>
     </div>
     <script type="module" src="index.js"></script>
   </body>
+  <script>
+    function modal(id) {
+      const zIndex = 9999;
+      const modal = document.getElementById(id);
+      let ul;
+      // 모달 div 뒤에 희끄무레한 레이어
+      const bg = document.createElement("div");
+      bg.setStyle({
+        position: "fixed",
+        zIndex: zIndex,
+        left: "0px",
+        top: "0px",
+        width: "100%",
+        height: "100%",
+        overflow: "auto",
+        // 레이어 색갈은 여기서 바꾸면 됨
+        backgroundColor: "rgba(0,0,0,0.4)",
+      });
+      document.body.append(bg);
+
+      // 닫기 버튼 처리, 시꺼먼 레이어와 모달 div 지우기
+      modal
+        .querySelector(".modal_close_btn")
+        .addEventListener("click", function () {
+          bg.remove();
+          while (ul.hasChildNodes()) {
+            ul.removeChild(ul.firstChild);
+          }
+          modal.style.display = "none";
+        });
+      modal.setStyle({
+        position: "fixed",
+        display: "block",
+        boxShadow:
+          "0 4px 8px 0 rgba(0, 0, 0, 0.2), 0 6px 20px 0 rgba(0, 0, 0, 0.19)",
+
+        // 시꺼먼 레이어 보다 한칸 위에 보이기
+        zIndex: zIndex + 1,
+
+        // div center 정렬
+        top: "50%",
+        left: "50%",
+        transform: "translate(-50%, -50%)",
+        msTransform: "translate(-50%, -50%)",
+        webkitTransform: "translate(-50%, -50%)",
+      });
+      const characters = JSON.parse(
+        window.localStorage.getItem("myCharacters")
+      );
+      ul = document.getElementById("charaList");
+      characters.forEach((i) => {
+        const li = document.createElement("li");
+        li.innerHTML = i;
+        ul.appendChild(li);
+      });
+    }
+
+    // Element 에 style 한번에 오브젝트로 설정하는 함수 추가
+    Element.prototype.setStyle = function (styles) {
+      for (var k in styles) this.style[k] = styles[k];
+      return this;
+    };
+
+    document.getElementById("myInfo").addEventListener("click", function () {
+      // 모달창 띄우기
+      modal("my_modal");
+    });
+  </script>
 </html>
