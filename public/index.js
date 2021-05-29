@@ -3,6 +3,7 @@
 // import { GLTFLoader } from "https://threejs.org/examples/jsm/loaders/GLTFLoader.js";
 import * as THREE from "https://unpkg.com/three@0.126.1/build/three.module.js";
 import { GLTFLoader } from "https://unpkg.com/three@0.126.1/examples/jsm/loaders/GLTFLoader.js";
+import { ColladaLoader } from "https://unpkg.com/three@0.126.1/examples/jsm/loaders/ColladaLoader.js";
 import { SkeletonUtils } from "https://unpkg.com/three@0.126.1/examples/jsm/utils/SkeletonUtils.js";
 
 let renderer = null;
@@ -43,6 +44,7 @@ let wolf = null;
 let copyWolf = null;
 let myCharacters = [];
 let div = null;
+let stage = null;
 
 if (window.localStorage.getItem("myCharacters") == null) {
   const knightJson = ["knight"];
@@ -433,6 +435,11 @@ const initScene = (gl, session) => {
     });
   });
 
+  const loader = new ColladaLoader();
+  loader.load("model.dae", (collada) => {
+    stage = collada.scene;
+  });
+
   model = new THREE.Object3D();
 
   controller = renderer.xr.getController(0);
@@ -767,6 +774,7 @@ socket.on("sendPlayerInfo", async (data) => {
       copy.position.set(0, 0, 0.5);
       copy.scale.set(0.1, 0.1, 0.1);
       ///copy.rotateY(Math.PI);
+      model.add(stage);
       model.add(copy);
       EnemyMixer = new THREE.AnimationMixer(copy);
       document.getElementById("setup").style.visibility = "hidden";
@@ -783,6 +791,7 @@ socket.on("sendPlayerInfo", async (data) => {
       copy.position.set(0, 0, 0.5);
       copy.scale.set(0.1, 0.1, 0.1);
       // copy.rotateY(Math.PI);
+      model.add(stage);
       model.add(copy);
       EnemyMixer = new THREE.AnimationMixer(copy);
       //document.getElementById("setup").style.visibility = "hidden";
