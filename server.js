@@ -72,8 +72,10 @@ io.on("connection", (socket) => {
       player2: {
         id: null,
         gps: null,
-        character: null,
-        command: null,
+        //character: null,
+        //command: null,
+        character: "knight",
+        command: "attack",
       },
     });
     socket.join(roomId);

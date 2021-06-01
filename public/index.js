@@ -18,8 +18,7 @@ let otherPlayer = null;
 let playerVector = null;
 let otherObject = null;
 const info = document.getElementById("info");
-const socket = io.connect("https://c6db68149482.ngrok.io");
-//4h2atlks2xj
+const socket = io.connect("https://55a6f33b81c5.ngrok.io");
 //--- Animation ---
 //let clips = null;
 //let mixer = null;
@@ -30,6 +29,8 @@ let then = 0;
 let knightAnimations = null;
 let wolfClips = null;
 let wolfAnimations = null;
+let dogClips = null;
+let dogAnimations = null;
 //-----------------
 let roomID = null;
 let distance = null;
@@ -45,6 +46,8 @@ let copyWolf = null;
 let myCharacters = [];
 let div = null;
 let stage = null;
+let dog = null;
+let copyDog = null;
 
 if (window.localStorage.getItem("myCharacters") == null) {
   const knightJson = ["knight"];
@@ -259,8 +262,7 @@ function myCounter(character) {
 }
 
 async function enemyAttack(character) {
-  // const enemyModel = await model.children[1];
-  const enemyModel = await targetModel.children[1];
+  const enemyModel = await targetModel.children[2];
   const interval = await setInterval(() => {
     if (enemyModel.position.z > -0.4) {
       enemyModel.position.z -= 0.05;
@@ -382,61 +384,84 @@ const initScene = (gl, session) => {
     copyKnight.rotateY(Math.PI);
     gltfLoader.load("wolf.glb", (glb) => {
       wolf = glb.scene;
-      wolf.scale.set(0.1, 0.1, 0.1);
+      wolf.scale.set(0.3, 0.3, 0.3);
+      const box = new THREE.Box3().setFromObject(wolf);
+      const c = box.getCenter(new THREE.Vector3());
+      const size = box.getSize(new THREE.Vector3());
+      wolf.position.set(-c.x, size.y / 2 - c.y, -c.z);
       wolfClips = glb.animations;
       wolfAnimations = {
         idle: "04_Idle_Armature_0",
         defense: "03_creep_Armature_0",
         attack: "01_Run_Armature_0",
       };
-      copyWolf = SkeletonUtils.clone(glb.scene);
-      copyWolf.rotateY(Math.PI);
-      //document.getElementById("wolf").addEventListener("click", cha_wolf);
-      //document.getElementById("setup").style.visibility = "visible";
-      //document.getElementById("knight").addEventListener("click", cha_knight);
-      div = document.createElement("div");
-      div.style.borderStyle = "double";
-      div.style.position = "absolute";
-      div.style.left = "50%";
-      div.style.transform = "translateX(-50%)";
-      div.style.top = "40%";
-      div.style.width = "10em";
-      div.style.backgroundColor = "white";
 
-      // myCharacters.forEach((data) => {
-      //   const child = document.createElement("div");
-      //   child.style.marginTop = "2em";
-      //   child.style.marginBottom = "2em";
-      //   child.style.borderStyle = "double";
-      //   child.style.innerHTML = data;
-      //   child.addEventListener("click", cha_select(data));
-      //   div.appendChild(child);
-      // });
-      for (let i = 0; i < myCharacters.length; i++) {
-        let child = document.createElement("div");
-        child.style.marginTop = "2em";
-        child.style.marginBottom = "2em";
-        child.style.borderStyle = "double";
-        console.log(myCharacters[i]);
-        child.innerHTML = myCharacters[i];
-        //child.addEventListener("click", cha_select(myCharacters[i]));
-        switch (myCharacters[i]) {
-          case "knight":
-            child.addEventListener("click", cha_knight);
-            break;
-          case "wolf":
-            child.addEventListener("click", cha_wolf);
-            break;
+      copyWolf = SkeletonUtils.clone(glb.scene);
+      copyWolf.position.set(-c.x, size.y / 2 - c.y, -c.z);
+      copyWolf.rotateY(Math.PI);
+
+      gltfLoader.load("out.glb", (dogModel) => {
+        dog = dogModel.scene;
+
+        dog.scale.set(0.1, 0.1, 0.1);
+
+        const box = new THREE.Box3().setFromObject(dog);
+        const c = box.getCenter(new THREE.Vector3());
+        const size = box.getSize(new THREE.Vector3());
+        dog.position.set(-c.x, size.y / 2 - c.y, -c.z);
+
+        dogClips = dogModel.animations;
+        dogAnimations = {
+          idle: "Idle",
+          defense: "Death",
+          attack: "Jump",
+        };
+
+        copyDog = SkeletonUtils.clone(dogModel.scene);
+        copyDog.rotateY(Math.PI);
+
+        div = document.createElement("div");
+        div.style.borderStyle = "double";
+        div.style.position = "absolute";
+        div.style.left = "50%";
+        div.style.transform = "translateX(-50%)";
+        div.style.top = "40%";
+        div.style.width = "10em";
+        div.style.backgroundColor = "white";
+
+        for (let i = 0; i < myCharacters.length; i++) {
+          let child = document.createElement("div");
+          child.style.marginTop = "2em";
+          child.style.marginBottom = "2em";
+          child.style.borderStyle = "double";
+          console.log(myCharacters[i]);
+          child.innerHTML = myCharacters[i];
+          //child.addEventListener("click", cha_select(myCharacters[i]));
+          switch (myCharacters[i]) {
+            case "knight":
+              child.addEventListener("click", cha_knight);
+              break;
+            case "wolf":
+              child.addEventListener("click", cha_wolf);
+              break;
+            case "dog":
+              child.addEventListener("click", cha_dog);
+          }
+          div.appendChild(child);
         }
-        div.appendChild(child);
-      }
-      //document.appendChild(div);
-      document.getElementById("overlay").appendChild(div);
+        //document.appendChild(div);
+        document.getElementById("overlay").appendChild(div);
+      });
     });
   });
 
   const loader = new ColladaLoader();
   loader.load("model.dae", (collada) => {
+    collada.scene.scale.set(0.0035, 0.0035, 0.0035);
+    const box = new THREE.Box3().setFromObject(collada.scene);
+    const c = box.getCenter(new THREE.Vector3());
+    const size = box.getSize(new THREE.Vector3());
+    collada.scene.position.set(-c.x, size.y / 2 - c.y - 0.12, -c.z);
     stage = collada.scene;
   });
 
@@ -477,6 +502,17 @@ function cha_knight() {
       knightClips,
       knightAnimations.idle
     );
+    const action = myMixer.clipAction(clip);
+    action.play();
+    selectFlag = true;
+  }
+}
+
+function cha_dog() {
+  if (dog && !selectFlag) {
+    selectCharacter(dog, "dog");
+    myMixer = new THREE.AnimationMixer(dog);
+    const clip = THREE.AnimationClip.findByName(dogClips, dogAnimations.idle);
     const action = myMixer.clipAction(clip);
     action.play();
     selectFlag = true;
@@ -777,7 +813,8 @@ socket.on("sendPlayerInfo", async (data) => {
       model.add(stage);
       model.add(copy);
       EnemyMixer = new THREE.AnimationMixer(copy);
-      document.getElementById("setup").style.visibility = "hidden";
+      //document.getElementById("setup").style.visibility = "hidden";
+      div.style.visibility = "hidden";
       //const clip = THREE.AnimationClip.findByName(knightClips, "knight_idle");
       const clip = THREE.AnimationClip.findByName(
         eval(`${data.player2.character}Clips`),
@@ -811,8 +848,13 @@ socket.on("sendPlayerInfo", async (data) => {
     switch (name) {
       case "knight":
         return copyKnight;
+        break;
       case "wolf":
-        return wolf;
+        return copyWolf;
+        break;
+      case "dog":
+        return copyDog;
+        break;
     }
   }
   // if (otherPlayer && otherObject && model) {
