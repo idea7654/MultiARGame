@@ -18,7 +18,7 @@ let otherPlayer = null;
 let playerVector = null;
 let otherObject = null;
 const info = document.getElementById("info");
-const socket = io.connect("https://55a6f33b81c5.ngrok.io");
+const socket = io.connect("https://gamedata.pcu.ac.kr:9000");
 //--- Animation ---
 //let clips = null;
 //let mixer = null;
@@ -731,7 +731,7 @@ function updateAnimation(time) {
   //   model.scale.set(distance / 10, distance / 10, distance / 10);
   // }
   if (distance && targetModel) {
-    targetModel.scale.set(distance / 4, distance / 4, distance / 4);
+    targetModel.scale.set(distance / 20, distance / 20, distance / 20);
   }
 }
 

@@ -1,13 +1,24 @@
 const express = require("express");
 const app = express();
 const cors = require("cors");
+const https = require("https");
+const fs = require("fs");
+const options = {
+  key: fs.readFileSync("./privkey.pem"),
+  cert: fs.readFileSync("./cert.pem"),
+};
 
 let rooms = [];
 let i = 1;
+app.use(express.static("public"));
 app.use(cors({ credentials: true }));
 //app.use(express.static("public"));
 
-const server = app.listen(3000);
+app.get("/", (req, res) => {
+  res.send("Test");
+});
+const server = https.createServer(options, app).listen(9000);
+// const server = app.listen(9000);
 
 const io = require("socket.io")(server, {
   cors: {
@@ -53,7 +64,7 @@ io.on("connection", (socket) => {
     if (room.player1.command && room.player2.command) {
       io.to(data.roomID).emit("executeTurn", room);
       room.player1.command = null;
-      room.player2.command = null;
+      //room.player2.command = ;
     }
   });
 
