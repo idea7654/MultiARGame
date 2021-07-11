@@ -91,14 +91,21 @@ socket.on("showArButton", (data) => {
 socket.on("executeTurn", (data) => {
   if (data.player1.id == socket.id) {
     //player1이 나일때
-    if (data.player1.command == "attack") {
-      myAttack(data.player1.character);
-    } else if (data.player1.command == "defense") {
-      myDefense(data.player1.character);
-    } else {
-      myCounter(data.player1.character);
-    }
+    // if (data.player1.command == "attack") {
+    //   myAttack(data.player1.character);
+    // } else if (data.player1.command == "defense") {
+    //   myDefense(data.player1.character);
+    // } else {
+    //   myCounter(data.player1.character);
+    // }
     setTimeout(() => {
+      if (data.player1.command == "attack") {
+        myAttack(data.player1.character);
+      } else if (data.player1.command == "defense") {
+        myDefense(data.player1.character);
+      } else {
+        myCounter(data.player1.character);
+      }
       if (data.player2.command == "attack") {
         enemyAttack(data.player2.character);
         if (data.player1.command == "attack") {
@@ -135,14 +142,21 @@ socket.on("executeTurn", (data) => {
     }, 3000);
   } else {
     //player2가 나일때
-    if (data.player1.command == "attack") {
-      enemyAttack(data.player1.character);
-    } else if (data.player1.command == "defense") {
-      enemyDefense(data.player1.character);
-    } else {
-      enemyCounter(data.player1.character);
-    }
+    // if (data.player1.command == "attack") {
+    //   enemyAttack(data.player1.character);
+    // } else if (data.player1.command == "defense") {
+    //   enemyDefense(data.player1.character);
+    // } else {
+    //   enemyCounter(data.player1.character);
+    // }
     setTimeout(() => {
+      if (data.player1.command == "attack") {
+        enemyAttack(data.player1.character);
+      } else if (data.player1.command == "defense") {
+        enemyDefense(data.player1.character);
+      } else {
+        enemyCounter(data.player1.character);
+      }
       if (data.player2.command == "attack") {
         myAttack(data.player2.character);
         if (data.player1.command == "attack") {
@@ -193,7 +207,7 @@ async function myAttack(character) {
   //const playerModel = await model.children[0];
   const playerModel = await targetModel.children[0];
   const interval = await setInterval(() => {
-    if (playerModel.position.z < 0.4) {
+    if (playerModel.position.z < 0) {
       playerModel.position.z += 0.05;
     } else {
       // const clip = THREE.AnimationClip.findByName(
@@ -213,7 +227,7 @@ async function myAttack(character) {
     clearInterval(interval);
 
     const newInterval = setInterval(() => {
-      if (playerModel.position.z >= -0.5) {
+      if (playerModel.position.z > 0) {
         playerModel.position.z -= 0.05;
         // const clip = THREE.AnimationClip.findByName(
         //   knightClips,
@@ -264,7 +278,7 @@ function myCounter(character) {
 async function enemyAttack(character) {
   const enemyModel = await targetModel.children[2];
   const interval = await setInterval(() => {
-    if (enemyModel.position.z > -0.4) {
+    if (enemyModel.position.z > 0) {
       enemyModel.position.z -= 0.05;
     } else {
       // const clip = THREE.AnimationClip.findByName(
@@ -284,7 +298,7 @@ async function enemyAttack(character) {
     clearInterval(interval);
 
     const newInterval = setInterval(() => {
-      if (enemyModel.position.z <= 0.5) {
+      if (enemyModel.position.z < 0) {
         enemyModel.position.z += 0.05;
         // const clip = THREE.AnimationClip.findByName(
         //   knightClips,
